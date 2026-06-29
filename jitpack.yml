@@ -1,0 +1,18 @@
+# JitPack build configuration.
+#
+# Builds only the `vico:compose` Android/KMP artifacts and publishes them to the local Maven repo,
+# which JitPack then serves. The coordinates are overridden so the published Gradle module metadata
+# references `com.github.<user>.<repo>` (what JitPack serves) instead of the canonical group—keeping
+# multiplatform variant resolution self-consistent for consumers.
+#
+# Consume from an Android project with:
+#   implementation("com.github.lewan42.vico:compose:<tag>")
+jdk:
+  - openjdk17
+install:
+  - ./gradlew
+    :vico:compose:publishKotlinMultiplatformPublicationToMavenLocal
+    :vico:compose:publishAndroidPublicationToMavenLocal
+    -PvicoGroupId=com.github.lewan42.vico
+    -PvicoVersion=$VERSION
+    --no-configuration-cache

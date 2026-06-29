@@ -18,7 +18,14 @@ plugins { id("com.vanniktech.maven.publish") }
 
 mavenPublishing {
   publishToMavenCentral(automaticRelease = true)
-  signAllPublications()
+  // Sign only when a signing key is configured (e.g. Maven Central releases). Environments without a
+  // key—such as JitPack or `publishToMavenLocal`—skip signing instead of failing.
+  if (
+    providers.gradleProperty("signingInMemoryKey").isPresent ||
+      providers.gradleProperty("signing.keyId").isPresent
+  ) {
+    signAllPublications()
+  }
   pom {
     name = "Vico"
     description = "A powerful and extensible multiplatform chart library."

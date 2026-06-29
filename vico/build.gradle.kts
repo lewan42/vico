@@ -19,8 +19,12 @@ import java.time.Year
 plugins { `dokka-convention` }
 
 subprojects {
-  group = "com.patrykandpatrick.vico"
-  version = Versions.VICO
+  // Coordinates are overridable so non-canonical publishers (e.g. JitPack) can emit self-consistent
+  // Gradle metadata. JitPack serves multi-module artifacts under `com.github.<user>.<repo>` and
+  // builds a given tag with `VERSION` set; `jitpack.yml` forwards these as `-PvicoGroupId`/
+  // `-PvicoVersion`. Locally and for Maven Central, both fall back to the canonical values.
+  group = providers.gradleProperty("vicoGroupId").getOrElse("com.patrykandpatrick.vico")
+  version = providers.gradleProperty("vicoVersion").getOrElse(Versions.VICO)
 }
 
 dependencies {
