@@ -585,8 +585,10 @@ protected constructor(
 
         line.fillColor?.let { color ->
           line.draw(context, linePath, color, verticalAxisPosition)
-          forEachPointInBounds(series, drawingStart, pointInfoMap) { entry, x, y, _, _ ->
-            updateMarkerTargets(entry, seriesKey, x, y, color)
+          if (collectMarkerTargets) {
+            forEachPointInBounds(series, drawingStart, pointInfoMap) { entry, x, y, _, _ ->
+              updateMarkerTargets(entry, seriesKey, x, y, color)
+            }
           }
         }
           ?: run {
@@ -596,8 +598,10 @@ protected constructor(
             line.draw(context, linePath, lineCanvas, lineFillCanvas, verticalAxisPosition)
             lineCanvas.drawImage(lineFillBitmap, Offset.Zero, srcInPaint)
             canvas.drawImage(lineBitmap, Offset.Zero, EmptyPaint)
-            forEachPointInBounds(series, drawingStart, pointInfoMap) { entry, x, y, _, _ ->
-              updateMarkerTargets(entry, seriesKey, x, y, lineFillBitmap)
+            if (collectMarkerTargets) {
+              forEachPointInBounds(series, drawingStart, pointInfoMap) { entry, x, y, _, _ ->
+                updateMarkerTargets(entry, seriesKey, x, y, lineFillBitmap)
+              }
             }
           }
 

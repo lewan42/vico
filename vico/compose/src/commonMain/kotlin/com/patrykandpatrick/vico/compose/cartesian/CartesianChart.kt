@@ -313,6 +313,8 @@ internal constructor(
         updatePersistentMarkers(model.extraStore)
         previousPersistentMarkerHashCode = persistentMarkerHashCode
       }
+      (context as? MutableCartesianMeasuringContext)?.collectMarkerTargets =
+        marker != null || persistentMarkerMap.isNotEmpty()
       model.forEachWithLayer(
         layerDimensionUpdateConsumer.apply {
           this.context = context
@@ -376,31 +378,50 @@ internal constructor(
 
   internal fun draw(context: CartesianDrawingContext) {
     with(context) {
+      // The offscreen layer bitmap exists only so that (a) fading edges can be applied to the
+      // layers and (b) markers can draw *under* the layers. When neither feature is in use,
+      // rasterizing the layers into a software bitmap and re-uploading it every frame is pure
+      // overhead (and a major CPU cost on Skia targets), so draw the layers directly instead.
+      val useLayerBitmap =
+        fadingEdges != null || marker != null || persistentMarkerMap.isNotEmpty()
       if (fadingEdges != null) canvas.saveLayer(Rect(Offset.Zero, canvasSize), EmptyPaint)
       decorations.forEach { it.drawUnderLayers(context) }
       axisManager.drawUnderLayers(context)
-      val (layerBitmap, layerCanvas) = getBitmap(cacheKeyNamespace)
-      withCanvas(layerCanvas) {
+      if (useLayerBitmap) {
+        val (layerBitmap, layerCanvas) = getBitmap(cacheKeyNamespace)
+        withCanvas(layerCanvas) {
+          model.forEachWithLayer(drawingConsumer.apply { this.context = context })
+        }
+        sortMarkerTargets()
+        forEachPersistentMarker { marker, targets -> marker.drawUnderLayers(context, targets) }
+        val markerTargets = getMarkerTargets(markerX, markerSeriesIndex)
+        val drawMarker = markerTargets.isNotEmpty()
+        if (drawMarker) marker?.drawUnderLayers(context, markerTargets)
+        canvas.drawImage(layerBitmap, Offset.Zero, EmptyPaint)
+        fadingEdges?.run {
+          draw(context)
+          canvas.restore()
+        }
+        axisManager.drawOverLayers(context)
+        decorations.forEach { it.drawOverLayers(context) }
+        forEachPersistentMarker { marker, targets -> marker.drawOverLayers(context, targets) }
+        legend?.draw(context)
+        if (drawMarker) marker?.drawOverLayers(context, markerTargets)
+      } else {
         model.forEachWithLayer(drawingConsumer.apply { this.context = context })
+        sortMarkerTargets()
+        axisManager.drawOverLayers(context)
+        decorations.forEach { it.drawOverLayers(context) }
+        legend?.draw(context)
       }
-      val sortedMarkerTargetPairs = _markerTargets.toList().sortedBy { it.first }
-      _markerTargets.clear()
-      _markerTargets.putAll(sortedMarkerTargetPairs)
-      forEachPersistentMarker { marker, targets -> marker.drawUnderLayers(context, targets) }
-      val markerTargets = getMarkerTargets(markerX, markerSeriesIndex)
-      val drawMarker = markerTargets.isNotEmpty()
-      if (drawMarker) marker?.drawUnderLayers(context, markerTargets)
-      canvas.drawImage(layerBitmap, Offset.Zero, EmptyPaint)
-      fadingEdges?.run {
-        draw(context)
-        canvas.restore()
-      }
-      axisManager.drawOverLayers(context)
-      decorations.forEach { it.drawOverLayers(context) }
-      forEachPersistentMarker { marker, targets -> marker.drawOverLayers(context, targets) }
-      legend?.draw(context)
-      if (drawMarker) marker?.drawOverLayers(context, markerTargets)
     }
+  }
+
+  private fun sortMarkerTargets() {
+    if (_markerTargets.isEmpty()) return
+    val sortedMarkerTargetPairs = _markerTargets.toList().sortedBy { it.first }
+    _markerTargets.clear()
+    _markerTargets.putAll(sortedMarkerTargetPairs)
   }
 
   internal fun updateRanges(ranges: MutableCartesianChartRanges, model: CartesianChartModel) {

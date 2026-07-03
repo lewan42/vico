@@ -193,15 +193,17 @@ protected constructor(
 
         val columnSignificantY = if (entry.y < 0f) columnBottom else columnTop
 
-        updateMarkerTargets(
-          entry = entry,
-          seriesKey = seriesKey,
-          canvasX = columnCenterX,
-          canvasY = columnSignificantY,
-          columnHeight = columnBottom - columnTop,
-          column = column,
-          mergeMode = mergeMode,
-        )
+        if (collectMarkerTargets) {
+          updateMarkerTargets(
+            entry = entry,
+            seriesKey = seriesKey,
+            canvasX = columnCenterX,
+            canvasY = columnSignificantY,
+            columnHeight = columnBottom - columnTop,
+            column = column,
+            mergeMode = mergeMode,
+          )
+        }
 
         column.drawVertical(this, columnCenterX, columnTop, columnBottom, zoom)
 

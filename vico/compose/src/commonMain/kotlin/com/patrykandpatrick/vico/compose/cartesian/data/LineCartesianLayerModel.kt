@@ -90,10 +90,16 @@ public class LineCartesianLayerModel : CartesianLayerModel {
     this.extraStore = extraStore
   }
 
-  override fun getXDeltaGcd(): Double = entries.getXDeltaGcd()
+  // The GCD depends only on `entries`, which `copy` shares, so compute it at most once per series
+  // and carry it over to copies. This keeps extras-only updates from rescanning the whole series.
+  private var xDeltaGcd: Double? = null
+
+  override fun getXDeltaGcd(): Double = xDeltaGcd ?: entries.getXDeltaGcd().also { xDeltaGcd = it }
 
   override fun copy(extraStore: ExtraStore): CartesianLayerModel =
-    LineCartesianLayerModel(entries, series, seriesKeys, minX, maxX, minY, maxY, extraStore)
+    LineCartesianLayerModel(entries, series, seriesKeys, minX, maxX, minY, maxY, extraStore).also {
+      it.xDeltaGcd = xDeltaGcd
+    }
 
   override fun equals(other: Any?): Boolean =
     this === other ||

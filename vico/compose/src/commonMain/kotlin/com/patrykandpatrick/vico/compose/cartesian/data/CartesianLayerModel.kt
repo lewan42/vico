@@ -119,21 +119,22 @@ internal fun <T : CartesianLayerModel.Entry> List<T>.getSliceIndices(
   if (isEmpty()) return IntRange.EMPTY
   if (visiblePadding == null) return indices
 
-  var firstVisible = size
-  for (index in indices) {
-    if (this[index].x >= visibleXRangeStart) {
-      firstVisible = index
-      break
-    }
+  // The list is sorted by `x`, so binary-search for the visible span’s bounds. This runs per
+  // frame, and a linear scan gets expensive once a long series is scrolled toward its end.
+  var low = 0
+  var high = size
+  while (low < high) {
+    val mid = (low + high) ushr 1
+    if (this[mid].x < visibleXRangeStart) low = mid + 1 else high = mid
   }
+  val firstVisible = low
 
-  var lastVisibleExclusive = size
-  for (index in firstVisible until size) {
-    if (this[index].x > visibleXRangeEnd) {
-      lastVisibleExclusive = index
-      break
-    }
+  high = size
+  while (low < high) {
+    val mid = (low + high) ushr 1
+    if (this[mid].x <= visibleXRangeEnd) low = mid + 1 else high = mid
   }
+  val lastVisibleExclusive = low
 
   val start = (firstVisible - visiblePadding).coerceAtLeast(0)
   val endExclusive = (lastVisibleExclusive + visiblePadding).coerceAtMost(size)

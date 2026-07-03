@@ -72,10 +72,16 @@ public class CandlestickCartesianLayerModel : CartesianLayerModel {
     this.extraStore = extraStore
   }
 
-  override fun getXDeltaGcd(): Double = series.getXDeltaGcd()
+  // The GCD depends only on `series`, which `copy` shares, so compute it at most once per series
+  // and carry it over to copies. This keeps extras-only updates from rescanning the whole series.
+  private var xDeltaGcd: Double? = null
+
+  override fun getXDeltaGcd(): Double = xDeltaGcd ?: series.getXDeltaGcd().also { xDeltaGcd = it }
 
   override fun copy(extraStore: ExtraStore): CartesianLayerModel =
-    CandlestickCartesianLayerModel(series, key, minX, maxX, minY, maxY, extraStore)
+    CandlestickCartesianLayerModel(series, key, minX, maxX, minY, maxY, extraStore).also {
+      it.xDeltaGcd = xDeltaGcd
+    }
 
   override fun equals(other: Any?): Boolean =
     this === other ||

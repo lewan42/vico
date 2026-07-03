@@ -165,16 +165,18 @@ protected constructor(
         bodyTopY = bodyBottomY - minBodyHeight
       }
 
-      updateMarkerTargets(
-        entry,
-        model.key,
-        bodyCenterX,
-        bodyBottomY,
-        bodyTopY,
-        bottomWickY,
-        topWickY,
-        candle,
-      )
+      if (collectMarkerTargets) {
+        updateMarkerTargets(
+          entry,
+          model.key,
+          bodyCenterX,
+          bodyBottomY,
+          bodyTopY,
+          bottomWickY,
+          topWickY,
+          candle,
+        )
+      }
 
       candle.body.drawVertical(this, bodyCenterX, bodyTopY, bodyBottomY, zoom)
 

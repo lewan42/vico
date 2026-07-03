@@ -45,18 +45,38 @@ public class DashedShape(
   private var drawDashLength = 0f
   private var drawGapLength = 0f
 
+  // Dashed outlines are rebuilt dash by dash, which is costly to do repeatedly—e.g., for every
+  // grid line on every frame. Outline requests overwhelmingly repeat the previous size (grid
+  // lines span the plot), so memoize the last result.
+  private var lastSize = Size.Unspecified
+  private var lastDensity = Float.NaN
+  private var lastLayoutDirection: LayoutDirection? = null
+  private var lastOutline: Outline? = null
+
   override fun createOutline(
     size: Size,
     layoutDirection: LayoutDirection,
     density: Density,
   ): Outline {
+    lastOutline
+      ?.takeIf {
+        size == lastSize && density.density == lastDensity && layoutDirection == lastLayoutDirection
+      }
+      ?.let {
+        return it
+      }
     val path = Path()
     if (size.width > size.height) {
       outlineHorizontalDashes(density, layoutDirection, path, size)
     } else {
       outlineVerticalDashes(density, layoutDirection, path, size)
     }
-    return Outline.Generic(path)
+    val outline = Outline.Generic(path)
+    lastSize = size
+    lastDensity = density.density
+    lastLayoutDirection = layoutDirection
+    lastOutline = outline
+    return outline
   }
 
   private fun outlineHorizontalDashes(

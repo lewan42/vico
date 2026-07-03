@@ -57,6 +57,14 @@ public interface CartesianMeasuringContext : MeasuringContext {
 
   public val markerSeriesIndex: Int?
     @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP) get
+
+  /**
+   * Whether [CartesianLayer]s should collect [CartesianMarker.Target][
+   * com.patrykandpatrick.vico.compose.cartesian.marker.CartesianMarker.Target]s while drawing.
+   * `false` when the targets would never be read (no marker and no persistent markers).
+   */
+  public val collectMarkerTargets: Boolean
+    @RestrictTo(RestrictTo.Scope.LIBRARY_GROUP) get() = true
 }
 
 internal fun CartesianMeasuringContext.getFullXRange(layerDimensions: CartesianLayerDimensions) =

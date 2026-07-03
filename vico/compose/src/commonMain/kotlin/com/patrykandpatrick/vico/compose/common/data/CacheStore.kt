@@ -18,15 +18,15 @@ package com.patrykandpatrick.vico.compose.common.data
 
 /** Caches data. */
 public class CacheStore internal constructor() {
-  private var map = mutableMapOf<String, Any>()
-  private var purgedMap = mutableMapOf<String, Any>()
+  private var map = mutableMapOf<Key, Any>()
+  private var purgedMap = mutableMapOf<Key, Any>()
 
   /**
    * Retrieves the value associated with the key belonging to the specified namespace and matching
    * the given components. If there’s no such value, `null` is returned.
    */
   public fun <T : Any> getOrNull(keyNamespace: KeyNamespace, vararg keyComponents: Any?): T? {
-    val key = keyNamespace.getKey(*keyComponents)
+    val key = Key(keyNamespace, keyComponents)
     val value = map[key]
     if (value != null) purgedMap[key] = value
     @Suppress("UNCHECKED_CAST")
@@ -35,7 +35,7 @@ public class CacheStore internal constructor() {
 
   /** Caches [value]. */
   public operator fun set(keyNamespace: KeyNamespace, vararg keyComponents: Any?, value: Any) {
-    val key = keyNamespace.getKey(*keyComponents)
+    val key = Key(keyNamespace, keyComponents)
     map[key] = value
     purgedMap[key] = value
   }
@@ -58,9 +58,21 @@ public class CacheStore internal constructor() {
     purgedMap = mutableMapOf()
   }
 
-  /** Identifies a key namespace. These namespaces help prevent interscope key collisions. */
-  public class KeyNamespace {
-    internal fun getKey(vararg components: Any?) =
-      components.joinToString(prefix = "${hashCode()}, ")
+  /**
+   * A structural cache key. Comparing and hashing the components directly avoids the string
+   * building that a concatenated key would require—some components (e.g., text styles) have very
+   * expensive `toString` implementations, and keys are built on every lookup.
+   */
+  private class Key(val namespace: KeyNamespace, val components: Array<out Any?>) {
+    private val hashCode = 31 * namespace.hashCode() + components.contentHashCode()
+
+    override fun equals(other: Any?): Boolean =
+      this === other ||
+        other is Key && namespace === other.namespace && components.contentEquals(other.components)
+
+    override fun hashCode(): Int = hashCode
   }
+
+  /** Identifies a key namespace. These namespaces help prevent interscope key collisions. */
+  public class KeyNamespace
 }

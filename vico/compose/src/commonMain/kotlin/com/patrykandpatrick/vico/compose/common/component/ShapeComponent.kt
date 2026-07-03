@@ -16,11 +16,13 @@
 
 package com.patrykandpatrick.vico.compose.common.component
 
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.shadow.DropShadowPainter
 import androidx.compose.ui.graphics.shadow.Shadow
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.patrykandpatrick.vico.compose.common.*
@@ -85,9 +87,48 @@ public open class ShapeComponent(
         adjustedBottom -= strokeThickness.half
         if (adjustedLeft > adjustedRight || adjustedTop > adjustedBottom) return
       }
-      path.rewind()
       val width = adjustedRight - adjustedLeft
       val height = adjustedBottom - adjustedTop
+      // Fast path: plain and uniformly rounded rectangles with solid fills and no shadows are
+      // drawn directly, skipping the per-draw `Path` rebuild—significant when a chart draws
+      // hundreds of such rectangles (candle bodies, wicks, columns, ticks) per frame. Brush
+      // fills take the general path, whose translated coordinate space they rely on.
+      if (shadowPainters.isEmpty() && fill.brush == null && strokeFill.brush == null) {
+        val cornerRadius = getUniformCornerRadiusOrNegative(width, height, density)
+        if (cornerRadius >= 0f) {
+          if (cornerRadius == 0f) {
+            canvas.drawRect(adjustedLeft, adjustedTop, adjustedRight, adjustedBottom, paint)
+          } else {
+            canvas.drawRoundRect(
+              adjustedLeft,
+              adjustedTop,
+              adjustedRight,
+              adjustedBottom,
+              cornerRadius,
+              cornerRadius,
+              paint,
+            )
+          }
+          if (strokeThickness != 0f && strokeFill.color.alpha != 0f) {
+            strokePaint.strokeWidth = strokeThickness
+            if (cornerRadius == 0f) {
+              canvas.drawRect(adjustedLeft, adjustedTop, adjustedRight, adjustedBottom, strokePaint)
+            } else {
+              canvas.drawRoundRect(
+                adjustedLeft,
+                adjustedTop,
+                adjustedRight,
+                adjustedBottom,
+                cornerRadius,
+                cornerRadius,
+                strokePaint,
+              )
+            }
+          }
+          return
+        }
+      }
+      path.rewind()
       applyBrushes(Size(width, height))
       shape.outline(density, layoutDirection, path, 0f, 0f, width, height)
       if (shadowPainters.isNotEmpty()) {
@@ -105,6 +146,28 @@ public open class ShapeComponent(
         strokePaint.strokeWidth = strokeThickness
         canvas.drawPath(path, strokePaint)
       }
+    }
+  }
+
+  /**
+   * Returns the corner radius (in pixels) if [shape] is a rectangle (`0`) or a
+   * [RoundedCornerShape] with four equal corners, and a negative value otherwise (meaning the
+   * shape requires the general [Path]-based drawing route).
+   */
+  private fun getUniformCornerRadiusOrNegative(
+    width: Float,
+    height: Float,
+    density: Density,
+  ): Float {
+    val shape = shape
+    return when {
+      shape === RectangleShape -> 0f
+      shape is RoundedCornerShape &&
+        shape.topStart == shape.topEnd &&
+        shape.topEnd == shape.bottomEnd &&
+        shape.bottomEnd == shape.bottomStart ->
+        shape.topStart.toPx(Size(width, height), density)
+      else -> -1f
     }
   }
 

@@ -42,4 +42,9 @@ internal class MutableCartesianMeasuringContext(
   override var markerX: Double?,
   override var markerSeriesIndex: Int?,
   override val cacheStore: CacheStore = CacheStore(),
-) : MeasuringContext, CartesianMeasuringContext
+) : MeasuringContext, CartesianMeasuringContext {
+  // Whether `CartesianLayer`s should collect `CartesianMarker.Target`s while drawing. Set to
+  // `false` by `CartesianChart` when there’s no marker and there are no persistent markers, in
+  // which case the targets would never be read—collecting them allocates per entry per frame.
+  override var collectMarkerTargets: Boolean = true
+}

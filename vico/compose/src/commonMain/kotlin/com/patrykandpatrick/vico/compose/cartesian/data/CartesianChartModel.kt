@@ -199,7 +199,13 @@ internal fun CartesianChartModelProducer.collectAsState(
         },
         startAnimation = startAnimation,
         prepareForTransformation = { model, extraStore, ranges ->
-          chartState.value.prepareForTransformation(model, extraStore, ranges)
+          // With no animation to run, the interpolated drawing models would exactly match the
+          // final data, so producing them—an O(n) allocation per update—is wasted work. Passing
+          // `null` clears the interpolators; the layers then read values straight from the model.
+          val isInitial = isInitialAnimation && dataState.value.model == null
+          val spec = if (isInitial) initialAnimationSpecState.value else animationSpecState.value
+          val effectiveModel = if (spec != null && !isInPreview) model else null
+          chartState.value.prepareForTransformation(effectiveModel, extraStore, ranges)
         },
         transform = { extraStore, fraction -> chartState.value.transform(extraStore, fraction) },
         hostExtraStore = extraStore,
