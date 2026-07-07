@@ -171,6 +171,12 @@ public class VicoScrollState {
     this.context = context
     this.layerDimensions = layerDimensions
     this.bounds = bounds
+    // Значение скролла снимается ДО обновления maxValue: сеттер maxValue зажимает value по новому
+    // максимуму, и когда контент укорачивается слева (например, окно данных подрезали), а скролл
+    // прижат к концу (value == maxValue — пользователь на самой новой точке), зажим сдвигает value
+    // назад на величину подрезки ЕЩЁ ДО репозиционирования. Репозиционирование ниже, посчитав
+    // startEdgeX из уже испорченного value, откатывало бы viewport влево на размер подрезки.
+    val preClampValue = value
     maxValue = context.getMaxScrollDistance(bounds.width, layerDimensions)
     val ranges = context.ranges
     val previous = previousMeasurement
@@ -189,7 +195,7 @@ public class VicoScrollState {
       // during measurement, so the corrected value is used by the same frame that draws the new
       // data (no flicker).
       val startEdgeX =
-        previous.minX + (value - previous.startPadding) / previous.xSpacing * previous.xStep
+        previous.minX + (preClampValue - previous.startPadding) / previous.xSpacing * previous.xStep
       value =
         layerDimensions.startPadding +
           ((startEdgeX - ranges.minX) / ranges.xStep).toFloat() * layerDimensions.xSpacing
