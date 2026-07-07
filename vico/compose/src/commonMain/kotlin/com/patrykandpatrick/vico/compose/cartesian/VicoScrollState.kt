@@ -225,7 +225,14 @@ public class VicoScrollState {
   }
 
   internal suspend fun scroll(scroll: Scroll, maxScroll: Float) {
-    isScrollInProgress.first { !it }
+    // Сюда приходит скролл-компенсация жеста зума — абсолютная целевая позиция, посчитанная от
+    // значения скролла и ширины контента на момент зум-события. Она валидна, только пока
+    // пользователь не скроллит: если пан или флинг уже идёт (например, пинч перешёл в пан без
+    // паузы, и скролл ни на кадр не стал idle), то к моменту остановки скролла и цель, и
+    // `maxScroll` устаревают, а их применение откатило бы viewport к позиции на момент зума.
+    // Поэтому устаревшую компенсацию отбрасываем — обработчик зума эмитит свежую на каждом
+    // зум-событии.
+    if (scrollableState.isScrollInProgress) return
     maxValue = maxScroll
     withUpdated { context, layerDimensions, bounds ->
       scrollableState.scrollBy(scroll.getDelta(context, layerDimensions, bounds, maxValue, value))
