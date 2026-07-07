@@ -17,3 +17,11 @@
 plugins { id("org.jetbrains.dokka") }
 
 dokka { dokkaPublications.configureEach { suppressInheritedMembers = true } }
+
+// На JitPack документация не нужна, а его билдер периодически не может докачать зависимости
+// Dokka (сбои при создании директорий в его Gradle-кэше) и роняет публикацию. Отключаем задачи
+// Dokka — javadoc-jar в такой сборке публикуется пустым. Переменную JITPACK выставляет сам
+// билдер JitPack.
+if (System.getenv("JITPACK") == "true") {
+  tasks.matching { it.name.startsWith("dokka") }.configureEach { enabled = false }
+}
