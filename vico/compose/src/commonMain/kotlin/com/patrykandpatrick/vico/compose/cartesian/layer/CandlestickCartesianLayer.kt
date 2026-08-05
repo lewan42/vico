@@ -123,6 +123,12 @@ protected constructor(
       drawChartInternal(model, ranges, extraStore.getOrNull(drawingModelKey))
     }
 
+  /** The thickness factor at which a line of [thickness] is one physical pixel wide. */
+  private fun CartesianDrawingContext.minThicknessFactor(thickness: Dp): Float {
+    val thicknessPixels = thickness.pixels
+    return if (thicknessPixels > 0f) 1f / thicknessPixels else 1f
+  }
+
   private fun CartesianDrawingContext.drawChartInternal(
     model: CandlestickCartesianLayerModel,
     ranges: CartesianChartRanges,
@@ -178,14 +184,24 @@ protected constructor(
         )
       }
 
-      candle.body.drawVertical(this, bodyCenterX, bodyTopY, bodyBottomY, zoom)
+      // Zoom-scaled thicknesses are floored at one physical pixel: at extreme zoom-out levels the
+      // body and wicks would otherwise become sub-pixel hairlines that fade or disappear.
+      val bodyThicknessFactor = zoom.coerceAtLeast(minThicknessFactor(candle.body.thickness))
+      val wickThicknessFactor =
+        if (scaleCandleWicks) {
+          zoom.coerceAtLeast(minThicknessFactor(candle.topWick.thickness))
+        } else {
+          1f
+        }
+
+      candle.body.drawVertical(this, bodyCenterX, bodyTopY, bodyBottomY, bodyThicknessFactor)
 
       candle.topWick.drawVertical(
         context = this,
         x = bodyCenterX,
         top = topWickY,
         bottom = bodyTopY,
-        thicknessFactor = if (scaleCandleWicks) zoom else 1f,
+        thicknessFactor = wickThicknessFactor,
       )
 
       candle.bottomWick.drawVertical(
@@ -193,7 +209,7 @@ protected constructor(
         x = bodyCenterX,
         top = bodyBottomY,
         bottom = bottomWickY,
-        thicknessFactor = if (scaleCandleWicks) zoom else 1f,
+        thicknessFactor = wickThicknessFactor,
       )
     }
   }

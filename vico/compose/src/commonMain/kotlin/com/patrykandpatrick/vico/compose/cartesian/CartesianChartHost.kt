@@ -81,6 +81,8 @@ internal fun narrowMarkerTargets(
  * @param chartAreaHeight the default height of the coordinate system, to which the heights of the
  *   legend, the marker, and other components are added. Used only when the height isn’t otherwise
  *   constrained (e.g., via [Modifier.height]).
+ * @param verticalAxisGestureHandler receives single-pointer vertical drags and double taps
+ *   performed over the [CartesianChart]’s vertical axes (see [VerticalAxisGestureHandler]).
  * @param placeholder shown when no [CartesianChartModel] is available.
  */
 @Composable
@@ -93,6 +95,7 @@ public fun CartesianChartHost(
   animationSpec: AnimationSpec<Float>? = defaultCartesianDiffAnimationSpec,
   initialAnimationSpec: AnimationSpec<Float>? = animationSpec,
   chartAreaHeight: Dp = Defaults.CARTESIAN_CHART_AREA_HEIGHT.dp,
+  verticalAxisGestureHandler: VerticalAxisGestureHandler? = null,
   placeholder: @Composable BoxScope.() -> Unit = {},
 ) {
   val mutableRanges = remember { MutableCartesianChartRanges() }
@@ -111,6 +114,7 @@ public fun CartesianChartHost(
       chartAreaHeight,
       previousModel,
       extraStore,
+      verticalAxisGestureHandler,
     )
   } else {
     ChartHostBox(modifier, chartAreaHeight, measureExtras = null) { placeholder() }
@@ -212,6 +216,7 @@ internal fun CartesianChartHostImpl(
   chartAreaHeight: Dp,
   previousModel: CartesianChartModel? = null,
   extraStore: ExtraStore = ExtraStore.Empty,
+  verticalAxisGestureHandler: VerticalAxisGestureHandler? = null,
 ) {
   var markerX by rememberSaveable { mutableStateOf<Double?>(null) }
   var markerSeriesIndex by rememberSaveable { mutableStateOf<Int?>(null) }
@@ -330,6 +335,11 @@ internal fun CartesianChartHostImpl(
                 }
               },
             longPressEnabled = chart.markerController.acceptsLongPress,
+            verticalAxisGestureHandler = verticalAxisGestureHandler,
+            getVerticalAxisBounds =
+              remember(chart) {
+                { listOfNotNull(chart.startAxis?.bounds, chart.endAxis?.bounds) }
+              },
           )
     ) {
       if (size.isEmpty()) return@Canvas

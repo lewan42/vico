@@ -33,6 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.input.pointer.AwaitPointerEventScope
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerInputChange
@@ -42,6 +43,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.util.fastForEach
 import com.patrykandpatrick.vico.compose.cartesian.marker.Interaction
 import com.patrykandpatrick.vico.compose.common.Point
+import com.patrykandpatrick.vico.compose.common.detectVerticalAxisGestures
 import com.patrykandpatrick.vico.compose.common.detectZoomGestures
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
@@ -59,6 +61,8 @@ internal fun Modifier.pointerInput(
   onZoom: ((Float, Offset) -> Unit)?,
   consumeMoveEvents: Boolean,
   longPressEnabled: Boolean,
+  verticalAxisGestureHandler: VerticalAxisGestureHandler? = null,
+  getVerticalAxisBounds: () -> List<Rect> = ::emptyList,
 ): Modifier {
   val defaultFlingBehavior = ScrollableDefaults.flingBehavior()
   val decayAnimationSpec = rememberSplineBasedDecay<Float>()
@@ -145,6 +149,17 @@ internal fun Modifier.pointerInput(
             onInteraction?.invoke(Interaction.Zoom(centroid.toPoint()))
             onZoom(zoom, centroid)
           }
+        }
+      } else {
+        Modifier
+      }
+    )
+    .then(
+      // Appended last so that, being the innermost handler, it sees main-pass events first and can
+      // claim vertical drags over a vertical axis before the scroll and zoom handlers above.
+      if (verticalAxisGestureHandler != null) {
+        Modifier.pointerInput(verticalAxisGestureHandler) {
+          detectVerticalAxisGestures(getVerticalAxisBounds, verticalAxisGestureHandler)
         }
       } else {
         Modifier
